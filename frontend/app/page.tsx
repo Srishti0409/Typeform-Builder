@@ -13,7 +13,7 @@ import FormListRow, { COL, FormAvatar } from '@/components/workspace/FormListRow
 import InviteDialog from '@/components/workspace/InviteDialog';
 import NamePromptDialog from '@/components/shared/NamePromptDialog';
 import { useToast } from '@/components/shared/Toast';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { applyKitToNewForm, useBrandKit } from '@/lib/brand-kit';
 import { useConnections } from '@/lib/integrations';
 import { useSubscription } from '@/lib/plans';
@@ -103,8 +103,10 @@ export default function HomePage() {
       setForms(fs => fs.map(f => (f.id === renameTarget.id ? { ...f, title } : f)));
       setRenameTarget(null);
       showToast('Form renamed');
-    } catch {
-      showToast('Could not rename the form.');
+    } catch (err) {
+      // The API explains why it refused (an empty or over-long name), which is
+      // more use than a generic failure.
+      showToast(err instanceof ApiError ? err.message : 'Could not rename the form.');
     } finally {
       setRenaming(false);
     }

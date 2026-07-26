@@ -113,6 +113,10 @@ export default function FormBuilder({
   function handleTitleChange(title: string) {
     setForm(f => ({ ...f, title }));
     if (titleTimer.current) clearTimeout(titleTimer.current);
+    // Clearing the field to retype is not a request to make the form nameless,
+    // and the API refuses a blank name — so hold the last saved one until there
+    // is something to save.
+    if (!title.trim()) return;
     titleTimer.current = setTimeout(() => {
       setSaving(true);
       api.forms
@@ -206,6 +210,48 @@ export default function FormBuilder({
       }
       return next;
     });
+  }
+
+  /**
+   * Copies a question and puts the copy directly beneath its original.
+   *
+   * There is no duplicate endpoint, so this is an add followed by a reorder — the
+   * API appends, and the copy belongs next to what it was copied from. The
+   * payload is read from local state, so edits still inside the save debounce are
+   * carried into the copy rather than lost.
+   */
+  async function handleDuplicateQuestion(id: string) {
+    const source = questions.find(q => q.id === id);
+    if (!source) return;
+    setSaving(true);
+    try {
+      const copy = await api.questions.add(form.id, {
+        question_type: source.question_type,
+        title: source.title,
+        description: source.description,
+        is_required: source.is_required,
+        placeholder: source.placeholder,
+        options: source.options,
+        settings: source.settings,
+      });
+      const ids = questions.map(q => q.id);
+      ids.splice(questions.findIndex(q => q.id === id) + 1, 0, copy.id);
+      // Renumber for the same reason a drag does: the preview and public form
+      // order by `order_index`, so the copy would otherwise show up last there.
+      setQuestions(
+        ids.map((qid, i) => ({
+          ...(qid === copy.id ? copy : questions.find(q => q.id === qid)!),
+          order_index: i,
+        }))
+      );
+      selectQuestion(copy.id);
+      await api.forms.reorderQuestions(form.id, ids);
+      markSaved();
+    } catch {
+      showToast('Could not duplicate that question.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleReorder(ids: string[]) {
@@ -326,6 +372,8 @@ export default function FormBuilder({
           onSelectEnding={() => setSelection('ending')}
           onOpenPicker={() => setPickerOpen(true)}
           onReorder={handleReorder}
+          onDuplicate={handleDuplicateQuestion}
+          onDelete={handleDeleteQuestion}
         />
 
         {/* Canvas column: its own toolbar, then the framed screen */}

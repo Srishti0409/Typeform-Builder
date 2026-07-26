@@ -18,6 +18,45 @@ type Direction = 'fwd' | 'back';
 const EXIT_MS = 220;
 
 /**
+ * Where a finished run is remembered, per form.
+ *
+ * sessionStorage rather than localStorage, deliberately: refreshing the ending
+ * must not restart the form or record a second response, while a genuinely new
+ * visit — another tab, or the same browser tomorrow — is a new respondent and
+ * must still be able to fill a published form. localStorage would lock a shared
+ * or kiosk browser out of the form for good.
+ *
+ * Also deliberately not lib/local-store.ts: that store is localStorage-backed
+ * and holds account-level state, which is the opposite lifetime to this. Only the
+ * `teraform:` namespace is shared with it.
+ */
+const completionKey = (formId: string) => `teraform:completed:${formId}`;
+
+/** Proof this session already has a response recorded for the form. */
+type Completion = { responseId?: string; submittedAt?: string };
+
+function readCompletion(formId: string): Completion | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(completionKey(formId));
+    return raw ? (JSON.parse(raw) as Completion) : null;
+  } catch {
+    // Storage can be denied outright (private mode, sandboxed embeds) or hold a
+    // corrupt entry. The flow still works — it just can't survive a refresh.
+    return null;
+  }
+}
+
+function writeCompletion(formId: string, value: Completion): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(completionKey(formId), JSON.stringify(value));
+  } catch {
+    // See readCompletion. A response is already stored server-side either way.
+  }
+}
+
+/**
  * Drives the public one-question-at-a-time experience: navigation, the
  * direction-aware slide/fade transition, client validation, and submission.
  *
@@ -42,10 +81,21 @@ export default function FormFill({
     [form.questions]
   );
 
+  /**
+   * A run this session already finished, read before the first paint so a refresh
+   * lands straight on the ending instead of flashing the welcome screen.
+   *
+   * A preview never consults it: the creator restarts one at will, and it records
+   * nothing to remember.
+   */
+  const restored = useMemo(() => (preview ? null : readCompletion(form.id)), [preview, form.id]);
+
   // A preview opens on the first question: the welcome screen is generated from
   // the form's title rather than authored here, so there is nothing on it for the
   // creator to check.
-  const [phase, setPhase] = useState<Phase>(preview ? 'question' : 'welcome');
+  const [phase, setPhase] = useState<Phase>(
+    preview ? 'question' : restored ? 'done' : 'welcome'
+  );
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +107,14 @@ export default function FormFill({
   const startedAt = useRef<number>(0);
   // Guards against a double advance while the exit animation is mid-flight.
   const transitioning = useRef(false);
+  /** Set once this session has a response recorded, so it can never post twice. */
+  const submitted = useRef(Boolean(restored));
+  /**
+   * Held for the duration of a POST. `submitting` state cannot do this job on its
+   * own: two Enters in the same tick both read the pre-render value and would
+   * each start a request.
+   */
+  const submitInFlight = useRef(false);
 
   /**
    * Mirror of `answers` that is always current.
@@ -75,11 +133,18 @@ export default function FormFill({
   const themeVars = useMemo(() => buildThemeVars(form.theme_config), [form.theme_config]);
   const current = questions[index];
 
+  /**
+   * How far along the run is, as a percentage of the form's questions.
+   *
+   * Counted from the question on screen — 1 of 5 is 20%, 5 of 5 is 100% — so the
+   * bar and the count can never tell the respondent two different things. The
+   * welcome and ending screens are not questions and are not counted.
+   */
   const progress = useMemo(() => {
     if (phase === 'welcome') return 0;
     if (phase === 'done') return 100;
     if (questions.length === 0) return 0;
-    return (index / questions.length) * 100;
+    return ((index + 1) / questions.length) * 100;
   }, [phase, index, questions.length]);
 
   /** Slides to a neighbouring question, honouring the exit/enter choreography. */
@@ -107,6 +172,17 @@ export default function FormFill({
       return;
     }
 
+    // This session's answers are already recorded. Anything that reaches here
+    // again — a stale tab, a double Enter that outran React — shows the ending
+    // rather than filing a duplicate response.
+    if (submitted.current) {
+      setPhase('done');
+      setAnim('tf-enter-fwd');
+      return;
+    }
+    if (submitInFlight.current) return;
+    submitInFlight.current = true;
+
     setSubmitting(true);
     setSubmitError(null);
 
@@ -118,11 +194,18 @@ export default function FormFill({
       .map(q => ({ question_id: q.id, answer_value: coerceAnswer(q, latest[q.id]) }));
 
     try {
-      await api.public.submit(form.slug, {
+      const recorded = await api.public.submit(form.slug, {
         answers: payload,
         completion_time_seconds: startedAt.current
           ? Math.max(1, Math.round((Date.now() - startedAt.current) / 1000))
           : undefined,
+      });
+      // Remembered before the ending renders, so a refresh in the very next
+      // moment restores it rather than restarting the form.
+      submitted.current = true;
+      writeCompletion(form.id, {
+        responseId: recorded.id,
+        submittedAt: recorded.submitted_at,
       });
       setPhase('done');
       setAnim('tf-enter-fwd');
@@ -140,9 +223,12 @@ export default function FormFill({
         setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       }
     } finally {
+      // Cleared either way: a rejected submission must be retriable, and a
+      // successful one is held off by `submitted` from here on.
+      submitInFlight.current = false;
       setSubmitting(false);
     }
-  }, [questions, form.slug, preview]);
+  }, [questions, form.slug, form.id, preview]);
 
   /** Validates the current question, then advances or submits. */
   const advance = useCallback(() => {
@@ -225,7 +311,13 @@ export default function FormFill({
       className={preview ? 'relative h-full w-full overflow-y-auto' : 'relative min-h-screen w-full'}
     >
       {phase === 'question' && (
-        <ProgressBar value={progress} anchor={preview ? 'absolute' : 'fixed'} />
+        <ProgressBar
+          value={progress}
+          anchor={preview ? 'absolute' : 'fixed'}
+          // Position among the ordered questions, which is what `index` walks.
+          current={index + 1}
+          total={questions.length}
+        />
       )}
 
       {phase === 'welcome' && (

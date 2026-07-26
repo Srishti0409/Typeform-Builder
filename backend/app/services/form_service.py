@@ -28,6 +28,21 @@ def unique_slug(db: Session, base: str) -> str:
     return candidate
 
 
+def _owned(db: Session, form_id: str, creator_id: str) -> Form | None:
+    """
+    A form, but only if this creator owns it.
+
+    Every mutation goes through this: an id belonging to someone else has to be
+    indistinguishable from one that doesn't exist, or the API leaks which ids are
+    real.
+    """
+    return (
+        db.query(Form)
+        .filter(Form.id == form_id, Form.creator_id == creator_id)
+        .first()
+    )
+
+
 def create_form(db: Session, title: str, description: str | None, creator_id: str) -> Form:
     base_slug = slugify(title)
     slug = unique_slug(db, base_slug)
@@ -44,9 +59,19 @@ def create_form(db: Session, title: str, description: str | None, creator_id: st
     return form
 
 
-def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form:
-    """Deep-copy a form and all its questions."""
-    original = db.query(Form).filter(Form.id == form_id).first()
+def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form | None:
+    """
+    Deep-copy a form and all its questions.
+
+    Responses are deliberately not copied: the copy is a new form that has never
+    been answered. It also starts as a draft with its own slug, so duplicating a
+    published form can't silently put a second live link on the same questions.
+    """
+    original = (
+        db.query(Form)
+        .filter(Form.id == form_id, Form.creator_id == creator_id)
+        .first()
+    )
     if not original:
         return None
 
@@ -86,8 +111,14 @@ def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form:
     return new_form
 
 
-def publish_form(db: Session, form_id: str) -> Form | None:
-    form = db.query(Form).filter(Form.id == form_id).first()
+def publish_form(db: Session, form_id: str, creator_id: str) -> Form | None:
+    """
+    Make the form answerable at its public slug.
+
+    The slug is minted once, at creation, and never reissued — a link that has
+    been shared has to keep working, so renaming or republishing must not move it.
+    """
+    form = _owned(db, form_id, creator_id)
     if not form:
         return None
     form.status = "published"
@@ -97,8 +128,13 @@ def publish_form(db: Session, form_id: str) -> Form | None:
     return form
 
 
-def unpublish_form(db: Session, form_id: str) -> Form | None:
-    form = db.query(Form).filter(Form.id == form_id).first()
+def unpublish_form(db: Session, form_id: str, creator_id: str) -> Form | None:
+    """
+    Take the form offline. The slug is kept, so republishing restores the same
+    link rather than orphaning the one already handed out; until then the public
+    route refuses it (see api/v1/public.py, which filters on status).
+    """
+    form = _owned(db, form_id, creator_id)
     if not form:
         return None
     form.status = "draft"

@@ -24,7 +24,25 @@ CREATOR_ID = settings.DEFAULT_CREATOR_ID
 
 
 def _build_share_url(slug: str) -> str:
-    return f"http://localhost:3000/f/{slug}"
+    return f"{settings.PUBLIC_FORM_BASE_URL}/f/{slug}"
+
+
+# The form's name is how it is identified in the creator's list, so a blank one
+# would leave a row that can't be told apart from any other. Reject it here, with
+# a message the UI can show verbatim, rather than storing whitespace.
+TITLE_MAX_LENGTH = 255
+
+
+def _clean_title(value: str) -> str:
+    title = value.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Give the form a name.")
+    if len(title) > TITLE_MAX_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Name must be {TITLE_MAX_LENGTH} characters or fewer.",
+        )
+    return title
 
 
 @router.get("", response_model=list[FormListItem])
@@ -51,7 +69,9 @@ def list_forms(db: Session = Depends(get_db)):
 
 @router.post("", response_model=FormOut, status_code=status.HTTP_201_CREATED)
 def create_form(payload: FormCreate, db: Session = Depends(get_db)):
-    form = form_service.create_form(db, payload.title, payload.description, CREATOR_ID)
+    form = form_service.create_form(
+        db, _clean_title(payload.title), payload.description, CREATOR_ID
+    )
     return _form_to_out(form)
 
 
@@ -69,8 +89,10 @@ def update_form(form_id: str, payload: FormUpdate, db: Session = Depends(get_db)
     if not form:
         raise HTTPException(status_code=404, detail="Form not found")
 
+    # Renaming. The slug is left alone on purpose: a link that has been shared
+    # keeps working, which is what the rename dialog promises.
     if payload.title is not None:
-        form.title = payload.title
+        form.title = _clean_title(payload.title)
     if payload.description is not None:
         form.description = payload.description
     if payload.thank_you_title is not None:
@@ -99,7 +121,7 @@ def delete_form(form_id: str, db: Session = Depends(get_db)):
 def publish_form(form_id: str, db: Session = Depends(get_db)):
     # A form with no questions would publish a link that renders nothing, so
     # refuse it here rather than handing out a dead URL.
-    existing = db.query(Form).filter(Form.id == form_id).first()
+    existing = db.query(Form).filter(Form.id == form_id, Form.creator_id == CREATOR_ID).first()
     if not existing:
         raise HTTPException(status_code=404, detail="Form not found")
     if not existing.questions:
@@ -108,7 +130,7 @@ def publish_form(form_id: str, db: Session = Depends(get_db)):
             detail="Add at least one question before publishing.",
         )
 
-    form = form_service.publish_form(db, form_id)
+    form = form_service.publish_form(db, form_id, CREATOR_ID)
     if not form:
         raise HTTPException(status_code=404, detail="Form not found")
     return PublishResponse(
@@ -121,7 +143,7 @@ def publish_form(form_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{form_id}/unpublish", response_model=PublishResponse)
 def unpublish_form(form_id: str, db: Session = Depends(get_db)):
-    form = form_service.unpublish_form(db, form_id)
+    form = form_service.unpublish_form(db, form_id, CREATOR_ID)
     if not form:
         raise HTTPException(status_code=404, detail="Form not found")
     return PublishResponse(

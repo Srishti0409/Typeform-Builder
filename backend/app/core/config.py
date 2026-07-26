@@ -13,6 +13,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     DEFAULT_CREATOR_ID: str = "default-creator-001"
+    # Where a published form is answerable. The share link the publish endpoint
+    # hands back is built from this, so it has to be the frontend's origin rather
+    # than the API's.
+    PUBLIC_FORM_BASE_URL: str = "http://localhost:3000"
 
     class Config:
         env_file = ".env"
