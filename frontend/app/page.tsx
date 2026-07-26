@@ -135,7 +135,8 @@ export default function HomePage() {
       assignWorkspace(copy.id, workspaceId);
       await loadForms();
       const name = workspaces.find(w => w.id === workspaceId)?.name ?? 'workspace';
-      showToast(`Copied to ${name}`);
+      const n = copy.questions?.length ?? 0;
+      showToast(`Copied to ${name} — ${n} question${n === 1 ? '' : 's'}`);
     } catch {
       showToast('Could not copy the form.');
     }
@@ -166,7 +167,10 @@ export default function HomePage() {
       const workspaceId = workspaceOf(id);
       if (workspaceId !== DEFAULT_WORKSPACE.id) assignWorkspace(copy.id, workspaceId);
       await loadForms();
-      showToast('Form duplicated');
+      // Say what came across, so the copy's contents don't have to be opened to
+      // be believed.
+      const n = copy.questions?.length ?? 0;
+      showToast(`Form duplicated — ${n} question${n === 1 ? '' : 's'} copied`);
     } catch {
       showToast('Could not duplicate the form.');
     }

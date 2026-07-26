@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.models.form import Form
 from app.schemas.form import (
     FormCreate, FormUpdate, FormOut, FormListItem,
-    FormWithQuestions, QuestionOut, PublishResponse, DuplicateFormResponse, ReorderQuestionsRequest
+    FormWithQuestions, QuestionOut, PublishResponse, ReorderQuestionsRequest
 )
 from app.services import form_service
 
@@ -154,17 +154,15 @@ def unpublish_form(form_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/{form_id}/duplicate", response_model=DuplicateFormResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{form_id}/duplicate", response_model=FormWithQuestions, status_code=status.HTTP_201_CREATED)
 def duplicate_form(form_id: str, db: Session = Depends(get_db)):
     new_form = form_service.duplicate_form(db, form_id, CREATOR_ID)
     if not new_form:
         raise HTTPException(status_code=404, detail="Form not found")
-    return DuplicateFormResponse(
-        id=new_form.id,
-        title=new_form.title,
-        slug=new_form.slug,
-        status=new_form.status,
-    )
+    # Answer with the copy in full, questions included. A bare id would leave the
+    # caller unable to tell what it got without a second round trip — and what was
+    # copied is the whole point of the request.
+    return _form_to_out_with_questions(new_form)
 
 
 @router.post("/{form_id}/reorder-questions", response_model=list[QuestionOut])

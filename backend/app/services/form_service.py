@@ -63,6 +63,11 @@ def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form | None:
     """
     Deep-copy a form and all its questions.
 
+    Every copied row is a new row with its own id, and the question bodies are
+    copied by value (the options/settings JSON is stored as text), so the copy and
+    the original share nothing once this returns — editing one cannot affect the
+    other.
+
     Responses are deliberately not copied: the copy is a new form that has never
     been answered. It also starts as a draft with its own slug, so duplicating a
     published form can't silently put a second live link on the same questions.
@@ -92,10 +97,17 @@ def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form | None:
     db.add(new_form)
     db.flush()
 
-    for q in original.questions:
-        new_q = Question(
+    # Read through the ordered relationship — the same read the builder and the
+    # public form render from — so the copy's order is the order the creator sees.
+    #
+    # Renumber as we go rather than carrying order_index across: a form authored
+    # before the ordering fix can hold several questions at the same index, and
+    # copying those verbatim would leave the copy's order down to how SQLite
+    # happens to break the tie, and any later reorder inside the copy unpredictable.
+    for index, q in enumerate(original.questions):
+        db.add(Question(
             form_id=new_form.id,
-            order_index=q.order_index,
+            order_index=index,
             question_type=q.question_type,
             title=q.title,
             description=q.description,
@@ -103,8 +115,7 @@ def duplicate_form(db: Session, form_id: str, creator_id: str) -> Form | None:
             placeholder=q.placeholder,
             options=q.options,
             settings=q.settings,
-        )
-        db.add(new_q)
+        ))
 
     db.commit()
     db.refresh(new_form)

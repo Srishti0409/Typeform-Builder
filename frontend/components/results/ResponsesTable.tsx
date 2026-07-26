@@ -4,16 +4,7 @@ import { useEffect, useState } from 'react';
 import { X, ChevronRight, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { Form, ResponseListItem, ResponseDetail } from '@/lib/types';
-
-/** Renders a stored answer value, which may be a string, number or list. */
-export function formatAnswer(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (value === 'yes') return 'Yes';
-  if (value === 'no') return 'No';
-  return String(value);
-}
+import { formatAnswer } from '@/lib/answers';
 
 function formatWhen(iso: string): string {
   // Stored as naive UTC by the API; treat it as such so times aren't shifted.

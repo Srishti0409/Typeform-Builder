@@ -1,6 +1,7 @@
 'use client';
 
 import type { ChoiceCount } from '@/lib/types';
+import { formatAnswer } from '@/lib/answers';
 
 /**
  * Counts per option for a choice question.
@@ -30,10 +31,13 @@ export default function ChoiceBars({
     <ul className="flex flex-col gap-2">
       {counts.map(c => {
         const pct = total > 0 ? c.percentage : 0;
+        // The API keys counts by the value it stored, which is not always how the
+        // option is written for a reader — a yes/no question stores 'yes'.
+        const label = formatAnswer(c.label);
         return (
           <li key={c.label} className="group">
             <div className="mb-1 flex items-baseline justify-between gap-3">
-              <span className="truncate text-sm text-[#3c323e]">{c.label}</span>
+              <span className="truncate text-sm text-[#3c323e]">{label}</span>
               {/* Direct labels — the set is small enough to label every bar. */}
               <span className="flex-shrink-0 text-xs tabular-nums text-[#655d67]">
                 {c.count} · {pct.toFixed(0)}%
@@ -42,7 +46,7 @@ export default function ChoiceBars({
             <div
               className="h-2 w-full overflow-hidden rounded-full"
               style={{ backgroundColor: TRACK }}
-              title={`${c.label}: ${c.count} of ${total} (${pct.toFixed(0)}%)`}
+              title={`${label}: ${c.count} of ${total} (${pct.toFixed(0)}%)`}
             >
               <div
                 className="h-full rounded-full transition-[width] duration-500 ease-out"

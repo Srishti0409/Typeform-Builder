@@ -81,7 +81,8 @@ export const api = {
 
     unpublish: (id: string) => apiFetch<{ id: string; slug: string; status: string; share_url: string }>(`/forms/${id}/unpublish`, { method: 'POST' }),
 
-    duplicate: (id: string) => apiFetch<{ id: string; title: string; slug: string; status: string }>(`/forms/${id}/duplicate`, { method: 'POST' }),
+    /** Answers with the copy in full, its copied questions included. */
+    duplicate: (id: string) => apiFetch<Form>(`/forms/${id}/duplicate`, { method: 'POST' }),
 
     reorderQuestions: (id: string, questionIds: string[]) =>
       apiFetch<Question[]>(`/forms/${id}/reorder-questions`, {

@@ -155,6 +155,38 @@ export default function FormBuilder({
     }
   }
 
+  /**
+   * "Import questions": one pasted line becomes one question.
+   *
+   * A pasted line says nothing about how it should be answered, so each lands as
+   * Short Text for the author to change from.
+   *
+   * Added one at a time on purpose — the server appends by counting what is
+   * already there, so firing them together would land several at the same index.
+   * Whatever arrived before a failure is already saved, so those are kept rather
+   * than leaving the canvas out of step with the server.
+   */
+  async function handleImportQuestions(titles: string[]) {
+    const added: Question[] = [];
+    try {
+      for (const title of titles) {
+        added.push(await api.questions.add(form.id, { question_type: 'short_text', title }));
+      }
+      showToast(`Imported ${added.length} question${added.length === 1 ? '' : 's'}`);
+    } catch {
+      showToast(
+        added.length
+          ? `Imported ${added.length} of ${titles.length} — the rest didn’t save.`
+          : 'Could not import those questions.'
+      );
+    } finally {
+      if (added.length) {
+        setQuestions(prev => [...prev, ...added]);
+        selectQuestion(added[0].id);
+      }
+    }
+  }
+
   async function handleUpdateQuestion(id: string, patch: Partial<Question>) {
     // Show the change straight away, then persist on a debounce so typing on the
     // canvas doesn't fire a request per keystroke.
@@ -453,6 +485,10 @@ export default function FormBuilder({
         <ElementPicker
           onClose={() => setPickerOpen(false)}
           onPick={type => { void handleAddQuestion(type); }}
+          onImport={handleImportQuestions}
+          // The same planner the "Chat to create" bar uses, so both routes in
+          // produce the same questions from the same description.
+          onGenerate={handleChat}
         />
       )}
 
