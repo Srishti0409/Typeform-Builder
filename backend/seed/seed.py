@@ -36,8 +36,8 @@ FORMS = [
         "thank_you_title": "Thank you for your feedback!",
         "thank_you_message": "Your input helps us improve our service every day.",
         "theme_config": {
-            "primaryColor": "#6366F1",
-            "backgroundColor": "#0F0F23",
+            "primaryColor": "#0445AF",
+            "backgroundColor": "#FFFFFF",
             "fontFamily": "Inter",
         },
         "questions": [
@@ -97,8 +97,8 @@ FORMS = [
         "thank_you_title": "Thanks for the feedback!",
         "thank_you_message": "We'll use your input to make the product even better.",
         "theme_config": {
-            "primaryColor": "#10B981",
-            "backgroundColor": "#0A1628",
+            "primaryColor": "#177767",
+            "backgroundColor": "#F4FAF8",
             "fontFamily": "Inter",
         },
         "questions": [
@@ -155,8 +155,8 @@ FORMS = [
         "thank_you_title": "You're registered! See you there!",
         "thank_you_message": "We'll send your confirmation and event details to your email.",
         "theme_config": {
-            "primaryColor": "#F59E0B",
-            "backgroundColor": "#1A0A2E",
+            "primaryColor": "#4B3F9E",
+            "backgroundColor": "#F7F2FD",
             "fontFamily": "Inter",
         },
         "questions": [
@@ -219,8 +219,8 @@ FORMS = [
         "thank_you_title": "Thanks for checking in!",
         "thank_you_message": "Your manager will review responses and follow up as needed.",
         "theme_config": {
-            "primaryColor": "#EC4899",
-            "backgroundColor": "#0F172A",
+            "primaryColor": "#C0562A",
+            "backgroundColor": "#FDF5EF",
             "fontFamily": "Inter",
         },
         "questions": [

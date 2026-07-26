@@ -1,4 +1,5 @@
 import type {
+  Contact,
   Form,
   FormListItem,
   Question,
@@ -10,14 +11,45 @@ import type {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1';
 
+/**
+ * Error carrying the parsed response body, so callers can act on structured
+ * failures — notably the submit endpoint's 422 `{validation_errors: {qid: msg}}`,
+ * which the respondent flow maps back onto individual questions.
+ */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+
+  /** Per-question server validation messages, when the API returned any. */
+  get validationErrors(): Record<string, string> | null {
+    const detail = (this.body as { detail?: unknown })?.detail;
+    const errors = (detail as { validation_errors?: unknown })?.validation_errors;
+    return errors && typeof errors === 'object' ? (errors as Record<string, string>) : null;
+  }
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+    // Every one of these reads is live editor state — a form, its questions, its
+    // responses. Never serve one from a cache.
+    cache: 'no-store',
     ...options,
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error?.detail ?? 'API error');
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    const detail = (body as { detail?: unknown })?.detail;
+    // `detail` is a string for simple errors but an object for validation
+    // failures, which would otherwise stringify to "[object Object]".
+    const message = typeof detail === 'string' ? detail : `Request failed (${res.status})`;
+    throw new ApiError(message, res.status, body);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -83,6 +115,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+
+  contacts: {
+    list: () => apiFetch<Contact[]>('/contacts'),
   },
 
   responses: {

@@ -9,7 +9,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from app.core.config import settings
 from app.core.database import create_all_tables
-from app.api.v1 import forms, questions, public, responses as responses_router
+from app.api.v1 import forms, questions, public, contacts, responses as responses_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -56,3 +56,4 @@ app.include_router(forms.router, prefix=settings.API_V1_STR)
 app.include_router(questions.router, prefix=settings.API_V1_STR)
 app.include_router(public.router, prefix=settings.API_V1_STR)
 app.include_router(responses_router.router, prefix=settings.API_V1_STR)
+app.include_router(contacts.router, prefix=settings.API_V1_STR)

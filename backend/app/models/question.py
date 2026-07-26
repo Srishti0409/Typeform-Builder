@@ -34,7 +34,9 @@ class Question(Base):
     # JSON list for choices/dropdown options: ["Option A", "Option B", ...]
     options: Mapped[str | None] = mapped_column(Text, nullable=True)
     # JSON object for type-specific settings:
-    # number: { min, max, step }  |  rating: { max_rating, shape }
+    # number: { limit_min, min, limit_max, max }  |  rating: { max_rating, shape }
+    # Optional settings pair a flag with a value, so an off switch is telling
+    # apart from an unset one and the value survives being switched off.
     settings: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 

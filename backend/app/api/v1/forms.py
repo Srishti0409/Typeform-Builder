@@ -97,6 +97,17 @@ def delete_form(form_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{form_id}/publish", response_model=PublishResponse)
 def publish_form(form_id: str, db: Session = Depends(get_db)):
+    # A form with no questions would publish a link that renders nothing, so
+    # refuse it here rather than handing out a dead URL.
+    existing = db.query(Form).filter(Form.id == form_id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Form not found")
+    if not existing.questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add at least one question before publishing.",
+        )
+
     form = form_service.publish_form(db, form_id)
     if not form:
         raise HTTPException(status_code=404, detail="Form not found")

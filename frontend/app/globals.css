@@ -22,6 +22,63 @@
   --color-purple-bg: #f5eafd;
   --color-purple-soft: #ecdffa;
   --color-progress-track: #dedcde;
+
+  /* ── Measured from the live Typeform renderer via Playwright ──────────────
+     See lib/design-tokens.ts for provenance. Layout/typography/motion are
+     theme-independent; colour + radius + font come from the form's theme. */
+
+  /* Typeform's own --spacing-* scale */
+  --sp-50: 4px;
+  --sp-100: 8px;
+  --sp-150: 12px;
+  --sp-250: 20px;
+  --sp-300: 24px;
+  --sp-400: 32px;
+  --sp-450: 36px;
+  --sp-500: 40px;
+  --sp-550: 44px;
+  --sp-600: 48px;
+
+  /* Respondent geometry */
+  --tf-block-width: 720px;
+  --tf-title-size: 26px;
+  --tf-title-line: 30px;
+  --tf-label-size: 20px;
+  --tf-input-height: 50px;
+  --tf-input-size: 26px;
+  --tf-ok-height: 40px;
+  --tf-ok-size: 18px;
+  --tf-choice-height: 44px;
+  --tf-choice-size: 18px;
+  --tf-choice-key: 24px;
+  --tf-badge-gutter: 26px;
+  --tf-progress-height: 3px;
+  --tf-nav-size: 32px;
+  /* One respondent screen. The viewport for the real form; the frame's own
+     height when the builder previews it inside one. */
+  --tf-screen-h: 100vh;
+
+  /* Motion — easeOutCubic, mined from Typeform's computed transitions */
+  --tf-ease: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --tf-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --tf-hover-dur: 0.25s;
+  --tf-progress-dur: 0.2s;
+  --tf-slide: 20px;
+}
+
+/* ── Out-of-scope affordance ────────────────────────────────────────────────
+   Features the assignment scopes out are shown but visibly inert. Pointer
+   events stay live so the not-allowed cursor actually renders on hover. */
+.oos {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+.oos * {
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+.oos:hover {
+  background-color: transparent !important;
 }
 
 * {
@@ -60,37 +117,44 @@ body {
   background: rgba(86, 82, 90, 0.35);
 }
 
-/* Button resets */
-button {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: inherit;
-  padding: 0;
-  font: inherit;
-}
-button:focus-visible {
-  outline: 2px solid var(--color-accent-green);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
+/* Element resets MUST live in @layer base.
+   Tailwind v4 emits utilities into @layer utilities, and per the cascade-layers
+   spec unlayered CSS beats any layered rule regardless of specificity. Left
+   unlayered, these resets silently defeat every background, padding and border
+   utility on buttons and inputs across the whole app. */
+@layer base {
+  button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    padding: 0;
+    font: inherit;
+  }
+  button:focus-visible {
+    outline: 2px solid var(--color-accent-green);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 
-/* Link reset */
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-/* Input resets */
-input {
-  font: inherit;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: inherit;
-}
-input::placeholder {
-  color: var(--color-text-muted);
+  input,
+  textarea,
+  select {
+    font: inherit;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
+  }
 }
 
 /* Animations */
@@ -103,6 +167,62 @@ input::placeholder {
   animation: fadeIn 0.15s ease-out;
 }
 
+/* ── Respondent question transitions ────────────────────────────────────────
+   Reproduces Typeform's @keyframes slideIn/slideOut: a 20px VERTICAL slide
+   crossfaded with opacity (not a horizontal carousel). Direction-aware so
+   going back reverses the travel. */
+@keyframes tfEnterDown {
+  from { opacity: 0.01; transform: translateY(var(--tf-slide)); }
+  to   { opacity: 1;    transform: translateY(0); }
+}
+@keyframes tfEnterUp {
+  from { opacity: 0.01; transform: translateY(calc(var(--tf-slide) * -1)); }
+  to   { opacity: 1;    transform: translateY(0); }
+}
+@keyframes tfExitUp {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(calc(var(--tf-slide) * -1)); }
+}
+@keyframes tfExitDown {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(var(--tf-slide)); }
+}
+
+.tf-enter-fwd  { animation: tfEnterDown 0.4s var(--tf-ease) both; }
+.tf-enter-back { animation: tfEnterUp   0.4s var(--tf-ease) both; }
+.tf-exit-fwd   { animation: tfExitUp    0.22s var(--tf-ease) both; }
+.tf-exit-back  { animation: tfExitDown  0.22s var(--tf-ease) both; }
+
+/* A mobile preview frame stands in for a phone, where there is no keyboard to
+   hint about. Tailwind's `sm:` reads the viewport, not the frame, so the hint
+   has to be hidden from the frame itself. */
+[data-tf-mobile] .tf-key-hint {
+  display: none;
+}
+
+/* Respondent surfaces are theme-driven; keep the caret on-brand. */
+.tf-input {
+  caret-color: var(--tf-primary);
+}
+.tf-input::placeholder {
+  color: var(--tf-placeholder);
+  opacity: 1;
+}
+
+/* Interactive states use Typeform's measured 0.25s easeOutCubic. */
+.tf-interactive {
+  transition: background-color var(--tf-hover-dur) var(--tf-ease),
+              color var(--tf-hover-dur) var(--tf-ease),
+              border-color var(--tf-hover-dur) var(--tf-ease),
+              opacity var(--tf-hover-dur) var(--tf-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-enter-fwd, .tf-enter-back, .tf-exit-fwd, .tf-exit-back {
+    animation-duration: 0.01ms;
+  }
+}
+
 /* Hover transitions */
 .nav-item {
   transition: background-color 0.1s ease;
@@ -113,4 +233,15 @@ input::placeholder {
 
 .btn-transition {
   transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+/* Builder canvas fields.
+   Placeholders read as authoring hints rather than answers, so they take the
+   italic grey Typeform uses for unfilled question copy. */
+.tf-canvas-field::placeholder {
+  font-style: italic;
+  opacity: 0.45;
+}
+.tf-canvas-field:focus::placeholder {
+  opacity: 0.3;
 }

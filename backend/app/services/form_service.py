@@ -126,7 +126,12 @@ def reorder_questions(db: Session, form_id: str, question_ids: list[str]) -> lis
 def add_question(db: Session, form_id: str, data: dict) -> Question:
     """Add a question to a form, appending at end or specified index."""
     existing_count = db.query(Question).filter(Question.form_id == form_id).count()
-    order_index = data.get("order_index", existing_count)
+    # The API model declares order_index as Optional, so model_dump() sends the
+    # key with a None value. A plain .get(key, default) therefore returns None
+    # rather than the fallback, which left every appended question at index 0.
+    order_index = data.get("order_index")
+    if order_index is None:
+        order_index = existing_count
 
     question = Question(
         form_id=form_id,

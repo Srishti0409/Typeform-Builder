@@ -136,6 +136,20 @@ def submit_form(
             detail={"validation_errors": validation_errors},
         )
 
+    # Reject a wholly empty submission. Without this, POSTing {"answers": []} to a
+    # form whose questions are all optional records a blank response and inflates
+    # the response count.
+    meaningful = {
+        qid: value
+        for qid, value in coerced_answers.items()
+        if value is not None and value != "" and value != []
+    }
+    if question_map and not meaningful:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Please answer at least one question before submitting.",
+        )
+
     # Persist response
     user_agent = request.headers.get("user-agent", "")
     response = Response(
