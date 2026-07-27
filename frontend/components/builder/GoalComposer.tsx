@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Plus, MoreHorizontal, Send, Square } from 'lucide-react';
 import { GOAL_TEMPLATES } from '@/lib/form-planner';
+import { ENABLED, UNAVAILABLE } from '@/lib/scope';
 
 /**
  * The "Explain the goal of your form" composer.
@@ -60,7 +61,13 @@ export default function GoalComposer({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const canSend = value.trim().length > 0 && !busy;
+  /**
+   * Off in this build (see lib/scope). The composer stays on the "New form"
+   * screen, dimmed and inert — "Start from scratch" alongside it is how a form
+   * gets built.
+   */
+  const enabled = ENABLED.aiAssist;
+  const canSend = enabled && value.trim().length > 0 && !busy;
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -134,12 +141,16 @@ export default function GoalComposer({
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-visible rounded-xl border border-[#ddb7f0] bg-white shadow-sm focus-within:border-[#c084fc] focus-within:ring-4 focus-within:ring-[#f5eafd]"
+      className={`relative w-full overflow-visible rounded-xl border border-[#ddb7f0] bg-white shadow-sm focus-within:border-[#c084fc] focus-within:ring-4 focus-within:ring-[#f5eafd] ${
+        enabled ? '' : 'oos'
+      }`}
+      title={enabled ? undefined : UNAVAILABLE}
     >
       <textarea
         ref={textareaRef}
         value={value}
         onChange={e => onChange(e.target.value)}
+        disabled={!enabled}
         onKeyDown={e => {
           // Enter sends; Shift+Enter keeps a newline, as in a chat composer.
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -157,6 +168,7 @@ export default function GoalComposer({
         <div className="flex items-center gap-3 text-[#847e85]">
           <button
             onClick={toggleDictation}
+            disabled={!enabled}
             aria-label={listening ? 'Stop dictation' : 'Dictate your goal'}
             title={listening ? 'Stop dictation' : 'Dictate your goal'}
             className={`transition-colors ${listening ? 'text-[#c0392b]' : 'hover:text-[#3c323e]'}`}
@@ -166,6 +178,7 @@ export default function GoalComposer({
 
           <button
             onClick={() => setMenu(m => (m === 'templates' ? 'none' : 'templates'))}
+            disabled={!enabled}
             aria-label="Insert a starter goal"
             title="Insert a starter goal"
             aria-expanded={menu === 'templates'}
@@ -176,6 +189,7 @@ export default function GoalComposer({
 
           <button
             onClick={() => setMenu(m => (m === 'more' ? 'none' : 'more'))}
+            disabled={!enabled}
             aria-label="More options"
             title="More options"
             aria-expanded={menu === 'more'}

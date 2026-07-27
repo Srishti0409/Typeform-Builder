@@ -18,6 +18,7 @@ import { ApiError, api } from '@/lib/api';
 import { applyKitToNewForm, useBrandKit } from '@/lib/brand-kit';
 import { useConnections } from '@/lib/integrations';
 import { useSubscription } from '@/lib/plans';
+import { ENABLED, UNAVAILABLE } from '@/lib/scope';
 import { DEFAULT_WORKSPACE, useWorkspaces } from '@/lib/workspaces';
 import type { FormListItem } from '@/lib/types';
 
@@ -45,6 +46,9 @@ export default function HomePage() {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(DEFAULT_WORKSPACE.id);
+
+  /** The suggestion banner drafts a form for you, which this build doesn't do. */
+  const aiOff = !ENABLED.aiAssist;
 
   const { showToast, toastNode } = useToast();
   const [kit] = useBrandKit();
@@ -293,20 +297,31 @@ export default function HomePage() {
             {/* AI suggestion banner — hands its goal to Research Flow */}
             {showBanner && (
               <div className="mt-4 flex items-start gap-3 rounded-xl border border-[#ddb7f0] bg-white px-4 py-3.5 shadow-sm animate-fadeIn">
-                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#f5eafd]">
+                <div className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#f5eafd] ${aiOff ? 'oos' : ''}`}>
                   <Sparkles size={16} className="text-[#9333ea]" />
                 </div>
-                <div className="min-w-0 flex-1">
+                {/* Only the suggestion is dimmed — the dismiss button below stays
+                    live, so a banner that can't act can still be closed. */}
+                <div className={`min-w-0 flex-1 ${aiOff ? 'oos' : ''}`} title={aiOff ? UNAVAILABLE : undefined}>
                   <p className="text-[15px] text-[#3c323e]">
                     Create a <span className="font-medium">Gather expert opinions</span> on recent
                     studies to support comprehensive literature reviews.
                   </p>
-                  <Link
-                    href={`/research-flow?goal=${encodeURIComponent(SUGGESTED_GOAL)}`}
-                    className="mt-2.5 inline-block rounded-lg border border-[rgba(81,76,84,0.18)] bg-white px-3 py-1.5 text-[14px] font-medium text-[#3c323e] transition-all hover:shadow-sm"
-                  >
-                    Use this form
-                  </Link>
+                  {aiOff ? (
+                    <span
+                      aria-disabled
+                      className="mt-2.5 inline-block rounded-lg border border-[rgba(81,76,84,0.18)] bg-white px-3 py-1.5 text-[14px] font-medium text-[#3c323e]"
+                    >
+                      Use this form
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/research-flow?goal=${encodeURIComponent(SUGGESTED_GOAL)}`}
+                      className="mt-2.5 inline-block rounded-lg border border-[rgba(81,76,84,0.18)] bg-white px-3 py-1.5 text-[14px] font-medium text-[#3c323e] transition-all hover:shadow-sm"
+                    >
+                      Use this form
+                    </Link>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowBanner(false)}

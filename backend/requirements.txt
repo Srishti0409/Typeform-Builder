@@ -4,3 +4,7 @@ sqlalchemy==2.0.36
 pydantic==2.10.3
 pydantic-settings==2.6.1
 python-multipart==0.0.20
+
+# Postgres driver, loaded only when DATABASE_URL names one. Local development
+# stays on SQLite, which needs no driver beyond the standard library.
+psycopg[binary]==3.2.13

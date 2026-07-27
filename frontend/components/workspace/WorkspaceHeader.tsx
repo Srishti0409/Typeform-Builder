@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useBrandKit } from '@/lib/brand-kit';
 import { useSubscription } from '@/lib/plans';
+import { ENABLED, UNAVAILABLE } from '@/lib/scope';
 
 /** Which account-level destination the current page is. */
 export type WorkspaceSection =
@@ -17,11 +18,19 @@ export type WorkspaceSection =
   | 'brand-kit'
   | 'plans';
 
-const TABS: { section: WorkspaceSection; href: string; label: string; icon: React.ReactNode; badge?: string }[] = [
+const TABS: {
+  section: WorkspaceSection;
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: string;
+  /** Off in this build: the tab is shown, dimmed, and doesn't navigate. */
+  oos?: boolean;
+}[] = [
   { section: 'forms', href: '/', label: 'Forms', icon: <FileText size={17} /> },
   { section: 'contacts', href: '/contacts', label: 'Contacts', icon: <Users size={17} /> },
-  { section: 'automations', href: '/automations', label: 'Automations', icon: <Zap size={17} /> },
-  { section: 'research-flow', href: '/research-flow', label: 'Research Flow', icon: <BarChart2 size={17} />, badge: 'Demo' },
+  { section: 'automations', href: '/automations', label: 'Automations', icon: <Zap size={17} />, oos: !ENABLED.automations },
+  { section: 'research-flow', href: '/research-flow', label: 'Research Flow', icon: <BarChart2 size={17} />, badge: 'Demo', oos: !ENABLED.researchFlow },
 ];
 
 /**
@@ -125,25 +134,35 @@ export default function WorkspaceHeader({ active }: { active: WorkspaceSection }
       {/* Workspace-level tabs */}
       <nav className="flex-shrink-0 bg-white px-3">
         <div className="flex items-center gap-1">
-          {TABS.map(tab => (
-            <Link
-              key={tab.section}
-              href={tab.href}
-              className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[15px] font-medium text-[#3c323e] transition-colors ${
-                active === tab.section
-                  ? 'border-[#3c323e]'
-                  : 'border-transparent hover:border-[rgba(60,50,62,0.25)]'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.badge && (
-                <span className="rounded-md border border-[#bdddf9] bg-[#f6fafd] px-1.5 py-0.5 text-[11px] font-medium text-[#01487f]">
-                  {tab.badge}
-                </span>
-              )}
-            </Link>
-          ))}
+          {TABS.map(tab => {
+            const cls = `flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[15px] font-medium text-[#3c323e] transition-colors ${
+              active === tab.section
+                ? 'border-[#3c323e]'
+                : 'border-transparent hover:border-[rgba(60,50,62,0.25)]'
+            }`;
+            const contents = (
+              <>
+                {tab.icon}
+                {tab.label}
+                {tab.badge && (
+                  <span className="rounded-md border border-[#bdddf9] bg-[#f6fafd] px-1.5 py-0.5 text-[11px] font-medium text-[#01487f]">
+                    {tab.badge}
+                  </span>
+                )}
+              </>
+            );
+            // A span rather than a dimmed Link: pointer-events alone would still
+            // leave the tab reachable by keyboard.
+            return tab.oos ? (
+              <span key={tab.section} className={`${cls} oos`} aria-disabled title={UNAVAILABLE}>
+                {contents}
+              </span>
+            ) : (
+              <Link key={tab.section} href={tab.href} className={cls}>
+                {contents}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </>

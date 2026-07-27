@@ -8,6 +8,7 @@ import {
   CATEGORY_TINT as TINT, ELEMENT_CATEGORIES, QUESTION_TYPES, UNSUPPORTED_ELEMENTS,
   type ElementCategory,
 } from '@/lib/question-types';
+import { ENABLED, UNAVAILABLE } from '@/lib/scope';
 import type { QuestionType } from '@/lib/types';
 
 type Row =
@@ -137,7 +138,11 @@ function ImportPanel({
 
           <button
             onClick={onSwitchToAI}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[rgba(81,76,84,0.2)] bg-white py-2.5 text-sm font-medium text-[#3c323e] transition-colors hover:bg-[rgba(87,84,91,0.04)]"
+            disabled={!ENABLED.aiAssist}
+            title={ENABLED.aiAssist ? undefined : UNAVAILABLE}
+            className={`mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[rgba(81,76,84,0.2)] bg-white py-2.5 text-sm font-medium text-[#3c323e] transition-colors hover:bg-[rgba(87,84,91,0.04)] ${
+              ENABLED.aiAssist ? '' : 'oos'
+            }`}
           >
             <Sparkles size={15} />
             Create with AI
@@ -409,10 +414,15 @@ function ElementsPanel({
 
 type Tab = 'elements' | 'import' | 'ai';
 
-const TABS: { key: Tab; label: string }[] = [
+/**
+ * `oos` tabs are listed but can't be opened — the dialog should still show what
+ * Typeform offers. The panel behind one stays wired, so re-enabling it in
+ * lib/scope is the only change needed to bring it back.
+ */
+const TABS: { key: Tab; label: string; oos?: boolean }[] = [
   { key: 'elements', label: 'Add form elements' },
   { key: 'import', label: 'Import questions' },
-  { key: 'ai', label: 'Create with AI' },
+  { key: 'ai', label: 'Create with AI', oos: !ENABLED.aiAssist },
 ];
 
 /**
@@ -449,11 +459,15 @@ export default function ElementPicker({
               key={t.key}
               role="tab"
               aria-selected={tab === t.key}
+              disabled={t.oos}
+              title={t.oos ? UNAVAILABLE : undefined}
               onClick={() => setTab(t.key)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? 'border border-[#3c323e] text-[#3c323e]'
-                  : 'text-[#655d67] hover:bg-[rgba(87,84,91,0.06)]'
+                t.oos
+                  ? 'oos text-[#655d67]'
+                  : tab === t.key
+                    ? 'border border-[#3c323e] text-[#3c323e]'
+                    : 'text-[#655d67] hover:bg-[rgba(87,84,91,0.06)]'
               }`}
             >
               {t.label}

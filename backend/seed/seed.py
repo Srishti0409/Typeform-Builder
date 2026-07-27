@@ -6,6 +6,7 @@ import sys
 import os
 import json
 import random
+import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -262,6 +263,45 @@ FORMS = [
             },
         ],
     },
+    {
+        "title": "Demo form",
+        "slug": "demo-form",
+        "status": "published",
+        "theme_config": {
+            "primaryColor": "#0445AF",
+            "backgroundColor": "#FFFFFF",
+            "fontFamily": "Inter",
+        },
+        # Seeded empty: this one is here to be filled in and demonstrated, so it
+        # starts on a true zero rather than with sample submissions attached.
+        # `python -m seed.seed_form demo-form` adds some if they are wanted.
+        "seed_responses": False,
+        "questions": [
+            {
+                "type": "short_text",
+                "title": "What is your name?",
+            },
+            {
+                "type": "email",
+                "title": "Please enter your email",
+            },
+            {
+                "type": "number",
+                "title": "What is your age?",
+            },
+            {
+                "type": "yes_no",
+                "title": "Are you a student?",
+            },
+            {
+                "type": "rating",
+                "title": "Rate your experience.",
+                "description": "Let us know your experience.",
+                "required": True,
+                "settings": {"max_rating": 5, "shape": "star"},
+            },
+        ],
+    },
 ]
 
 
@@ -341,9 +381,34 @@ def gen_answer_for_question(q_type: str, q_title: str, options: list, settings: 
         return rng.choices(range(1, max_r + 1), weights=weights)[0]
 
     elif q_type == "number":
-        min_v = float(settings.get("min", 0))
-        max_v = float(settings.get("max", 100))
-        return round(rng.uniform(min_v, max_v), 1)
+        def bound(key: str, flag: str, fallback: float) -> float:
+            """
+            Only a bound the form actually enforces should shape the sample data.
+            A switched-off min/max is no constraint — same reading as
+            _number_bound() in services/validation.py.
+            """
+            raw = settings.get(key)
+            enabled = settings.get(flag)
+            if enabled is None:
+                enabled = raw is not None
+            if not enabled or raw is None:
+                return fallback
+            try:
+                return float(raw)
+            except (TypeError, ValueError):
+                return fallback
+
+        # An age of 47.3 reads as fake data; whole years don't.
+        if re.search(r"\bage\b", q_title.lower()):
+            low, high = bound("min", "limit_min", 18), bound("max", "limit_max", 65)
+        else:
+            low, high = bound("min", "limit_min", 0), bound("max", "limit_max", 100)
+        if low > high:
+            low, high = high, low
+        # Whole bounds mean a whole answer; decimals only where the form allows them.
+        if float(low).is_integer() and float(high).is_integer():
+            return rng.randint(int(low), int(high))
+        return round(rng.uniform(low, high), 1)
 
     elif q_type == "yes_no":
         return rng.choice(["yes", "yes", "yes", "no"])  # 75% yes bias
@@ -371,18 +436,28 @@ def seed():
     db = SessionLocal()
 
     try:
-        # Check if already seeded
-        existing = db.query(Form).filter(Form.creator_id == CREATOR_ID).count()
-        if existing > 0:
-            print(f"[OK] Database already seeded ({existing} forms found). Skipping.")
-            return
+        # Seeding is per form, keyed on the slug the definition declares — the
+        # column is unique, so a slug already present is that same form and is
+        # left exactly as it is. Re-running therefore adds only what is missing
+        # and never duplicates, and a definition added later reaches a database
+        # that was seeded before it existed.
+        existing_slugs = {
+            slug for (slug,) in
+            db.query(Form.slug).filter(Form.creator_id == CREATOR_ID).all()
+        }
 
         print("[*] Seeding database...")
 
         all_forms = []
         all_questions_by_form = {}
+        # Forms that asked not to have sample submissions generated for them.
+        skip_responses_for: set[str] = set()
 
         for form_data in FORMS:
+            if form_data["slug"] in existing_slugs:
+                print(f"  [=] '{form_data['title']}' already present — left alone")
+                continue
+
             form = Form(
                 id=str(uuid.uuid4()),
                 creator_id=CREATOR_ID,
@@ -422,10 +497,15 @@ def seed():
 
             db.flush()
             all_questions_by_form[form.id] = questions
+            if not form_data.get("seed_responses", True):
+                skip_responses_for.add(form.id)
             print(f"  [+] Created form: '{form.title}' ({len(questions)} questions, status={form.status})")
 
         # Seed responses for published forms
-        published_forms = [f for f in all_forms if f.status == "published"]
+        published_forms = [
+            f for f in all_forms
+            if f.status == "published" and f.id not in skip_responses_for
+        ]
         for form in published_forms:
             questions = all_questions_by_form[form.id]
             n_responses = random.randint(12, 22)
@@ -476,7 +556,10 @@ def seed():
             print(f"  [+] Seeded {n_responses} responses for '{form.title}'")
 
         db.commit()
-        print("\n[OK] Database seeded successfully!")
+        if all_forms:
+            print(f"\n[OK] Database seeded successfully! ({len(all_forms)} form(s) added)")
+        else:
+            print("\n[OK] Nothing to add — every seed form is already in the database.")
 
         # Print summary
         form_count = db.query(Form).count()

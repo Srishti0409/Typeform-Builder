@@ -8,6 +8,7 @@ import {
   MoreHorizontal, Pencil, Plus, Search, Trash2,
 } from 'lucide-react';
 import NamePromptDialog from '@/components/shared/NamePromptDialog';
+import { ENABLED, UNAVAILABLE } from '@/lib/scope';
 import { DEFAULT_WORKSPACE, type Workspace } from '@/lib/workspaces';
 
 export default function WorkspaceSidebar({
@@ -60,6 +61,9 @@ export default function WorkspaceSidebar({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuFor]);
+
+  /** Drafting a form and the Demo flow it lands on both have to be on. */
+  const askAiEnabled = ENABLED.aiAssist && ENABLED.researchFlow;
 
   const overLimit = responseLimit !== null && responsesUsed > responseLimit;
   const usedPct =
@@ -233,19 +237,27 @@ export default function WorkspaceSidebar({
           Increase response limit
         </Link>
 
-        {/* Research Flow's entry point */}
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#ddb7f0] bg-white px-3 py-2.5 shadow-sm transition-colors focus-within:border-[#c98fe6]">
+        {/* Research Flow's entry point. It drafts a form from a description and
+            lands on the Demo flow, so it needs both to be on. */}
+        <div
+          className={`mt-3 flex items-center gap-2 rounded-xl border border-[#ddb7f0] bg-white px-3 py-2.5 shadow-sm transition-colors focus-within:border-[#c98fe6] ${
+            askAiEnabled ? '' : 'oos'
+          }`}
+          title={askAiEnabled ? undefined : UNAVAILABLE}
+        >
           <Mic size={17} className="flex-shrink-0 text-[#655d67]" />
           <input
             value={aiGoal}
             onChange={e => setAiGoal(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && askResearchFlow()}
+            disabled={!askAiEnabled}
             placeholder="Ask Typeform AI"
             aria-label="Describe a form to draft"
-            className="min-w-0 flex-1 text-[15px] text-[#3c323e] placeholder:text-[#847e85]"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-[#3c323e] placeholder:text-[#847e85]"
           />
           <button
             onClick={askResearchFlow}
+            disabled={!askAiEnabled}
             aria-label="Draft this form"
             className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-[rgba(86,82,90,0.1)] bg-[rgba(89,86,93,0.04)] text-[#655d67] transition-colors hover:bg-[rgba(89,86,93,0.1)] hover:text-[#3c323e]"
           >

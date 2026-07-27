@@ -1,0 +1,29 @@
+# Python
+backend/venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local database. SQLite is the development store; the file (and its WAL
+# sidecars) is machine-local state and holds submitted responses, so it is not
+# something to carry in the repository. `python -m seed.seed` rebuilds it.
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node / Next (frontend/.gitignore covers these too; kept here so the rule
+# holds from the repository root as well)
+node_modules/
+.next/
+out/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

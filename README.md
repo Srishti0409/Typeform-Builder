@@ -81,6 +81,20 @@ The seeder is idempotent: if the creator already has forms it reports that and
 exits without touching anything. To reseed from scratch, delete
 `backend/teraform.db` (plus its `-wal`/`-shm` siblings) and run it again.
 
+To fill in a form you built yourself — which `seed.seed` won't touch — point
+`seed.seed_form` at its slug or id:
+
+```bash
+python -m seed.seed_form new-form-c2ef10              # 12-22 responses
+python -m seed.seed_form new-form-c2ef10 --count 20   # or a specific number
+python -m seed.seed_form new-form-c2ef10 --clear      # replace what's there
+```
+
+It reuses the same answer generator, so the sample data reads like the rest, and
+writes to the database directly — a draft can be filled in without recording a
+submission against a form that isn't live. Seeded rows carry the user agent
+`Mozilla/5.0 (Seeded Sample Data)`, so they can be told from real submissions.
+
 ---
 
 ## Architecture
@@ -289,10 +303,26 @@ rendered — so the app reads as complete — but are visibly inert: **50% opaci
 `cursor: not-allowed` only shows while pointer events reach the element, the class
 keeps them on the wrapper and disables them on children.
 
-Disabled this way: Integrations, Brand kit, View plans, the Contacts / Automations
-/ Research Flow tabs, workspace Invite and creation, the AI prompt box, response
-limits, per-form integrations, and the Settings page's Coming-soon list (logic
-jumps, webhooks, team collaboration, payment/file-upload question types).
+Disabled this way:
+
+- **Anything that drafts a form for you** — the workspace suggestion banner, the
+  sidebar's "Ask Typeform AI" box, the "New form" goal composer, the builder's
+  "Chat to create" bar, and the Add content dialog's "Create with AI" tab. The
+  banner stays dismissable: a suggestion that can't act should still be closable.
+- **Automations** and **Research Flow (Demo)** — the tabs are shown but don't
+  navigate. Both pages are still built and render if visited by URL directly.
+- The builder's **Workflow** tab and Logic panel (branching), video question
+  prompts, Comments, and the element picker's unsupported question types.
+- Per-form integrations dispatch, response limits, and the Settings page's
+  Coming-soon list (logic jumps, webhooks, team collaboration, payment and
+  file-upload question types).
+
+The first two groups are driven by one flag each in `frontend/lib/scope.ts`. The
+wiring behind them is intact — including the `/forms/{id}/generate-questions`
+endpoint — so flipping a flag back to `true` restores the feature.
+
+Working, by contrast: Forms, Contacts, Integrations, Brand kit, Plans, workspace
+creation and Invite.
 
 ---
 
