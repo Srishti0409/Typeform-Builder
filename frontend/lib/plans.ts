@@ -48,7 +48,7 @@ export const PLANS: Plan[] = [
     seats: 1,
     features: [
       '100 responses / month',
-      'Remove Teraform branding',
+      'Remove Typeform branding',
       'Custom thank-you screens',
       'Redirect on completion',
     ],

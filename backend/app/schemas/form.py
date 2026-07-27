@@ -168,6 +168,11 @@ class ReorderQuestionsRequest(BaseModel):
     question_ids: list[str]  # Ordered list of question IDs
 
 
+class GenerateQuestionsRequest(BaseModel):
+    """The creator's description of the form, for "Create with AI"."""
+    prompt: str
+
+
 class DuplicateFormResponse(BaseModel):
     id: str
     title: str

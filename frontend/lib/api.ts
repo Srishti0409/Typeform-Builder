@@ -84,6 +84,16 @@ export const api = {
     /** Answers with the copy in full, its copied questions included. */
     duplicate: (id: string) => apiFetch<Form>(`/forms/${id}/duplicate`, { method: 'POST' }),
 
+    /**
+     * "Create with AI" — plans questions from a description and appends them.
+     * 503 means the server has no AI key configured; 502 that the provider failed.
+     */
+    generateQuestions: (id: string, prompt: string) =>
+      apiFetch<Question[]>(`/forms/${id}/generate-questions`, {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+      }),
+
     reorderQuestions: (id: string, questionIds: string[]) =>
       apiFetch<Question[]>(`/forms/${id}/reorder-questions`, {
         method: 'POST',

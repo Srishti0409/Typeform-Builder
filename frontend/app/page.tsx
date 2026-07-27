@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Calendar, ChevronDown, FileText, Gem, LayoutGrid, List, MoreHorizontal,
+  FileText, Gem, LayoutGrid, List, MoreHorizontal,
   Plus, Sparkles, UserPlus, X,
 } from 'lucide-react';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
+import SortMenu, { type SortKey } from '@/components/workspace/SortMenu';
 import FormListRow, { COL, FormAvatar } from '@/components/workspace/FormListRow';
 import InviteDialog from '@/components/workspace/InviteDialog';
 import NamePromptDialog from '@/components/shared/NamePromptDialog';
@@ -39,7 +40,7 @@ export default function HomePage() {
   const [renaming, setRenaming] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [sortBy, setSortBy] = useState<SortKey>('created');
   const [showBanner, setShowBanner] = useState(true);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
@@ -193,11 +194,14 @@ export default function HomePage() {
     return forms
       .filter(f => workspaceOf(f.id) === activeWorkspaceId)
       .filter(f => !q || f.title.toLowerCase().includes(q))
-      .sort((a, b) =>
-        sortBy === 'date'
-          ? new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-          : a.title.localeCompare(b.title)
-      );
+      .sort((a, b) => {
+        // Alphabetical keeps the ordering the "Name" option always used — only
+        // the label changed. The two date orderings read the field they name:
+        // "Date created" used to sort by updated_at, which is now its own option.
+        if (sortBy === 'alphabetical') return a.title.localeCompare(b.title);
+        const field = sortBy === 'created' ? 'created_at' : 'updated_at';
+        return new Date(b[field]).getTime() - new Date(a[field]).getTime();
+      });
   }, [forms, search, sortBy, activeWorkspaceId, workspaceOf]);
 
   // The quota counts every response in the account, as billing would.
@@ -259,14 +263,7 @@ export default function HomePage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSortBy(s => (s === 'date' ? 'name' : 'date'))}
-                  className="flex items-center gap-2 rounded-lg border border-[rgba(81,76,84,0.18)] bg-white px-3 py-2 text-[14px] text-[#3c323e] transition-colors hover:bg-[rgba(87,84,91,0.04)]"
-                >
-                  <Calendar size={15} className="text-[#655d67]" />
-                  {sortBy === 'date' ? 'Date created' : 'Name'}
-                  <ChevronDown size={14} className="text-[#655d67]" />
-                </button>
+                <SortMenu value={sortBy} onChange={setSortBy} />
 
                 {/* Segmented list/grid toggle */}
                 <div className="flex overflow-hidden rounded-lg border border-[rgba(81,76,84,0.18)] bg-white">

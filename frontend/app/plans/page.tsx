@@ -19,7 +19,7 @@ const COMPARISON: { label: string; value: (p: Plan) => string | boolean }[] = [
   { label: 'All 8 question types', value: () => true },
   { label: 'Summary + response views', value: () => true },
   { label: 'CSV export', value: () => true },
-  { label: 'Remove Teraform branding', value: p => planAtLeast(p.id, 'basic') },
+  { label: 'Remove Typeform branding', value: p => planAtLeast(p.id, 'basic') },
   { label: 'Redirect on completion', value: p => planAtLeast(p.id, 'basic') },
   { label: 'HubSpot + Stripe', value: p => planAtLeast(p.id, 'plus') },
   { label: 'Custom subdomain', value: p => planAtLeast(p.id, 'plus') },

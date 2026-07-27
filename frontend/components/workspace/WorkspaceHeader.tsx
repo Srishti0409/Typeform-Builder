@@ -49,7 +49,7 @@ export default function WorkspaceHeader({ active }: { active: WorkspaceSection }
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            aria-label="Teraform home"
+            aria-label="Typeform home"
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#1c1a1e]"
           >
             <span className="flex items-center gap-[2px]">

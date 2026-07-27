@@ -240,7 +240,7 @@ export default function WorkspaceSidebar({
             value={aiGoal}
             onChange={e => setAiGoal(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && askResearchFlow()}
-            placeholder="Ask Teraform AI"
+            placeholder="Ask Typeform AI"
             aria-label="Describe a form to draft"
             className="min-w-0 flex-1 text-[15px] text-[#3c323e] placeholder:text-[#847e85]"
           />

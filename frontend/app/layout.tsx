@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Teraform — Create forms your audience will love',
+  title: 'Typeform Builder',
   description: 'Build beautiful, conversational forms that feel like a natural conversation.',
 };
 

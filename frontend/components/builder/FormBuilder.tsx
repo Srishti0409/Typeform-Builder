@@ -187,6 +187,21 @@ export default function FormBuilder({
     }
   }
 
+  /**
+   * "Create with AI": the server plans the questions from the description and
+   * saves them, so this only has to show what came back.
+   *
+   * Errors are re-thrown for the dialog to display — an unconfigured key or a
+   * provider failure needs explaining next to the description, not in a toast
+   * that disappears.
+   */
+  async function handleGenerateQuestions(prompt: string) {
+    const added = await api.forms.generateQuestions(form.id, prompt);
+    setQuestions(prev => [...prev, ...added]);
+    if (added[0]) selectQuestion(added[0].id);
+    showToast(`Added ${added.length} question${added.length === 1 ? '' : 's'}`);
+  }
+
   async function handleUpdateQuestion(id: string, patch: Partial<Question>) {
     // Show the change straight away, then persist on a debounce so typing on the
     // canvas doesn't fire a request per keystroke.
@@ -486,9 +501,7 @@ export default function FormBuilder({
           onClose={() => setPickerOpen(false)}
           onPick={type => { void handleAddQuestion(type); }}
           onImport={handleImportQuestions}
-          // The same planner the "Chat to create" bar uses, so both routes in
-          // produce the same questions from the same description.
-          onGenerate={handleChat}
+          onGenerate={handleGenerateQuestions}
         />
       )}
 

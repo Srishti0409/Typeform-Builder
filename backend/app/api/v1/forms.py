@@ -14,9 +14,10 @@ from app.core.config import settings
 from app.models.form import Form
 from app.schemas.form import (
     FormCreate, FormUpdate, FormOut, FormListItem,
-    FormWithQuestions, QuestionOut, PublishResponse, ReorderQuestionsRequest
+    FormWithQuestions, QuestionOut, PublishResponse, ReorderQuestionsRequest,
+    GenerateQuestionsRequest,
 )
-from app.services import form_service
+from app.services import ai_service, form_service
 
 router = APIRouter(prefix="/forms", tags=["forms"])
 
@@ -163,6 +164,45 @@ def duplicate_form(form_id: str, db: Session = Depends(get_db)):
     # caller unable to tell what it got without a second round trip — and what was
     # copied is the whole point of the request.
     return _form_to_out_with_questions(new_form)
+
+
+@router.post(
+    "/{form_id}/generate-questions",
+    response_model=list[QuestionOut],
+    status_code=status.HTTP_201_CREATED,
+)
+def generate_questions(form_id: str, payload: GenerateQuestionsRequest, db: Session = Depends(get_db)):
+    """
+    "Create with AI": plan questions from a description and append them.
+
+    The model's answer is persisted here rather than handed back for the client to
+    save, so a generated form is durable the moment the creator sees it.
+    """
+    form = db.query(Form).filter(Form.id == form_id, Form.creator_id == CREATOR_ID).first()
+    if not form:
+        raise HTTPException(status_code=404, detail="Form not found")
+
+    prompt = payload.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Describe the form you want.")
+    if len(prompt) > 2000:
+        raise HTTPException(
+            status_code=400, detail="Description must be 2000 characters or fewer."
+        )
+
+    try:
+        planned = ai_service.generate_questions(prompt)
+    except ai_service.AIUnavailable as exc:
+        # Not configured is a different problem from not working, and the creator
+        # can only act on the first if we say so.
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ai_service.AIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    # Appended through the same path the element picker uses, so order_index and
+    # the form's updated_at behave exactly as they do for a hand-added question.
+    created = [form_service.add_question(db, form_id, question) for question in planned]
+    return [_question_to_out(q) for q in created]
 
 
 @router.post("/{form_id}/reorder-questions", response_model=list[QuestionOut])

@@ -38,7 +38,7 @@ const EMPTY_DRAFT: Draft = {
 const TEMPLATES: { label: string; blurb: string; draft: Partial<Draft> }[] = [
   {
     label: 'Post new responses to Slack',
-    blurb: 'Your team sees answers without opening Teraform.',
+    blurb: 'Your team sees answers without opening Typeform.',
     draft: { name: 'Responses to Slack', actionId: 'slack-post', target: '#responses' },
   },
   {
@@ -175,7 +175,7 @@ export default function AutomationsPage() {
       <div className="border-t border-[rgba(86,82,90,0.08)] p-3">
         <div className="oos flex items-center gap-2 rounded-xl border border-[#ddb7f0] bg-white px-3 py-2.5 shadow-sm">
           <Mic size={17} className="flex-shrink-0 text-[#655d67]" />
-          <span className="min-w-0 flex-1 truncate text-[15px] text-[#847e85]">Ask Teraform AI</span>
+          <span className="min-w-0 flex-1 truncate text-[15px] text-[#847e85]">Ask Typeform AI</span>
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-[rgba(86,82,90,0.1)] bg-[rgba(89,86,93,0.04)] text-[#655d67]">
             <ArrowRight size={14} />
           </span>

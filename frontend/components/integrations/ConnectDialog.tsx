@@ -50,7 +50,7 @@ export default function ConnectDialog({
       </div>
 
       <p className="mt-5 text-sm font-medium text-[#3c323e]">
-        Teraform will be able to:
+        Typeform will be able to:
       </p>
       <ul className="mt-2 flex flex-col gap-2">
         {scopes.map(scope => (

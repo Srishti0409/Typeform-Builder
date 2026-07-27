@@ -1,4 +1,4 @@
-# Teraform — a Typeform clone
+# ypeform Builder — a Typeform clone
 
 A full-stack form builder that reproduces Typeform's creator workflow and its
 signature one-question-at-a-time respondent experience.
@@ -40,6 +40,23 @@ python -m uvicorn app.main:app --reload --port 8000
 ```
 
 API docs are then at <http://127.0.0.1:8000/docs>.
+
+#### Optional: "Create with AI"
+
+The builder's **Add content → Create with AI** tab writes questions from a
+description. It calls the Anthropic Messages API, so it needs a key:
+
+```bash
+cp .env.example .env      # then set AI_API_KEY
+```
+
+`ANTHROPIC_API_KEY` is read as well, so an environment that already has one needs
+no further setup. The key is only ever read from the environment — `.env` is
+gitignored and no key appears in source.
+
+Without a key the tab still opens and says it is unconfigured; nothing else in the
+app depends on it. `AI_MODEL`, `AI_BASE_URL`, `AI_MAX_QUESTIONS` and
+`AI_TIMEOUT_SECONDS` can be overridden the same way.
 
 ### Frontend
 
@@ -209,6 +226,7 @@ Base path `/api/v1`.
 | POST | `/forms/{form_id}/publish` | Publish; returns `share_url` |
 | POST | `/forms/{form_id}/unpublish` | Revert to draft |
 | POST | `/forms/{form_id}/duplicate` | Deep-copy form + questions |
+| POST | `/forms/{form_id}/generate-questions` | Plan questions from a description and append them (503 if no AI key) |
 | POST | `/forms/{form_id}/reorder-questions` | Persist drag-and-drop order |
 
 ### Questions

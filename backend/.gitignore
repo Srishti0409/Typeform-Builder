@@ -1,0 +1,4 @@
+# Secrets. The AI key is read from the environment; it must never be committed.
+.env
+.env.*
+!.env.example

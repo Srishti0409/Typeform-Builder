@@ -160,11 +160,12 @@ function ImportPanel({
 }
 
 /**
- * "Create with AI": plans a set of questions from a description.
+ * "Create with AI": describe the form, get questions.
  *
- * Deliberately the same deterministic planner the New form screen and the
- * "Chat to create" bar use — this build ships no model, and the copy says so
- * rather than implying one.
+ * The request goes to the server, which is where the model key lives. A failure
+ * is shown here rather than as a toast, because the dialog stays open and the
+ * description is usually worth another attempt — and because an unconfigured key
+ * is something the message has to explain.
  */
 function AiPanel({
   text,
@@ -176,6 +177,7 @@ function AiPanel({
   onGenerate: (prompt: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { ref.current?.focus(); }, []);
@@ -185,8 +187,11 @@ function AiPanel({
   async function submit() {
     if (!prompt || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await onGenerate(prompt);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the questions.');
     } finally {
       setBusy(false);
     }
@@ -211,15 +216,20 @@ function AiPanel({
           <div className="rounded-xl border border-[#e3cdf2] bg-[#fbf6fe] p-4">
             <Sparkles size={18} className="text-[#9333ea]" />
             <p className="mt-3 text-sm leading-snug text-[#3c323e]">
-              Describe the form and its questions get added for you, each with the
-              type that fits — email fields validate, ratings get stars, choice
+              Describe the form and its questions get written for you, each with the
+              type that fits — email fields validate, ratings get a scale, choice
               questions come with options.
             </p>
             <p className="mt-3 text-xs leading-snug text-[#655d67]">
-              Plans from the words in your description; no AI service is involved.
               Building from a file or a URL isn’t part of this build.
             </p>
           </div>
+
+          {error && (
+            <p role="alert" className="mt-4 rounded-xl border border-[#f0c9c4] bg-[#fdf6f5] p-3 text-[13px] leading-snug text-[#95291b]">
+              {error}
+            </p>
+          )}
         </aside>
       </div>
 

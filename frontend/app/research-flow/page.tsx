@@ -216,7 +216,7 @@ export default function ResearchFlowPage({
             <ol className="mt-3 flex flex-col gap-3">
               {[
                 'State the research goal in your own words.',
-                'Teraform matches it to a question set and drafts the form.',
+                'Typeform matches it to a question set and drafts the form.',
                 'Trim what you do not need, then create it for real.',
               ].map((step, i) => (
                 <li key={step} className="flex gap-2.5 text-[13px] text-[#655d67]">
