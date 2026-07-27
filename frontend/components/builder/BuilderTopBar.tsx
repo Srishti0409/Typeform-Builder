@@ -34,8 +34,14 @@ export default function BuilderTopBar({
     { key: 'connect', label: 'Connect', href: `/integrations?form=${form.id}` },
   ];
 
+  /*
+   * The action column's minimum is its content rather than zero, so a narrow
+   * window shrinks the title column instead of crushing the controls into it.
+   * Both side columns are still 1fr once there is room, which keeps the tabs
+   * centred at the widths where everything fits.
+   */
   return (
-    <header className="grid h-14 flex-shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 bg-white px-4">
+    <header className="grid h-14 flex-shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(auto,1fr)] items-center gap-3 bg-white px-4">
       {/* Left: breadcrumb + inline-editable title */}
       <div className="flex min-w-0 items-center gap-1.5 justify-self-start text-[15px]">
         <Link
@@ -79,7 +85,7 @@ export default function BuilderTopBar({
       </nav>
 
       {/* Right: save state, share, results, account */}
-      <div className="flex min-w-0 items-center gap-2 justify-self-end">
+      <div className="flex items-center gap-2 justify-self-end">
         {children}
 
         <button
@@ -103,9 +109,10 @@ export default function BuilderTopBar({
 
         <span className="mx-1 h-6 w-px bg-[rgba(86,82,90,0.14)]" />
 
+        {/* Two words, so it needs nowrap: wrapped, it outgrows the header row. */}
         <Link
           href="/plans"
-          className="rounded-lg bg-[#127a63] px-4 py-1.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#0f6552]"
+          className="whitespace-nowrap rounded-lg bg-[#127a63] px-4 py-1.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#0f6552]"
         >
           View plans
         </Link>
