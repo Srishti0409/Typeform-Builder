@@ -1,4 +1,4 @@
-# ypeform Builder — a Typeform clone
+# Typeform Builder — a Typeform clone
 
 A full-stack form builder that reproduces Typeform's creator workflow and its
 signature one-question-at-a-time respondent experience.
